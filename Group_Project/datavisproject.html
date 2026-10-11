@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="description" content="Data Visualisation Exercise 2.1"/>
+    <meta name="keywords" content="HTML, CSS, Javascript"/>
+    <meta name="author" content="James"/>
+    <title>Lab 2.1</title>
+    <meta name="description" content="Information for Lab 2.1"/>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        #title {
+            text-align: center;
+        }
+        #titlebackground {
+            background-color: rgb(205, 218, 236);
+        }
+        #redirectButton {
+            float: right;
+            margin-right: 1em;
+        }
+        .tooltip {
+            position: absolute;
+            width: auto;
+            height: auto;
+            padding: 5px;
+            background: white;
+            border: 2px solid black;
+            pointer-events: none;
+            visibility: hidden;
+        }
+        footer {
+            font-size: large;
+            color: grey;
+            display: flex;
+            justify-content: space-between;
+            padding: 1em;
+        }
+        #websitedescription {
+            text-align: center;
+        }
+        #chart-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        #legend {
+            margin-right: 600px;
+            margin-top: 300px;
+        }
+        img {
+            max-width: 200px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id = "titlebackground">
+        <h1 id = "title">COS30045 - Visualisation Assignment</h1>
+    </div>
+    <p id = "websitedescription"><b>Hover your mouse over a country</b> to view a pie chart about their healthcare workers or <b>click on a country</b> to view various line charts about their healthcare workers!</p>
+    
+    <div id="chart-container">
+        <div id="chart"></div>
+        <div class="tooltip" id="tooltip"></div>
+        <div id="legend">
+            <img src = "legend.png">
+        </div>
+    </div>
+
+    <footer>
+        <div>COS30045 Data Visualisation</div>
+        <div>James Newbegin 104563879 | Samuel Nguyen 103806719 | Brandon Swiderski 100984968</div>
+    </footer>
+    
+    <script>
+        const dataset = [
+            { country: "Australia", healthcareWorkersPerCapita: 22.8, lifeExpectancy: 83.2, physicians: 107775, nurses: 305849, others: 172000},
+            { country: "New Zealand", healthcareWorkersPerCapita: 19.71, lifeExpectancy: 82.36, physicians: 17208, nurses: 56685, others: 25863},
+            { country: "New Caledonia", healthcareWorkersPerCapita: 6.34, lifeExpectancy: 77.63, physicians: 630, nurses: 716, others: 471},
+            { country: "Vanuatu", healthcareWorkersPerCapita: 2.16, lifeExpectancy: 70.55, physicians: 62, nurses: 436, others: 174},
+            { country: "Fiji", healthcareWorkersPerCapita: 5.67, lifeExpectancy: 67.53, physicians: 368, nurses: 3496, others: 1352},
+            { country: "Solomon Islands", healthcareWorkersPerCapita: 3.11, lifeExpectancy: 73.01, physicians: 138, nurses: 1452, others: 557},
+            { country: "Papua New Guinea", healthcareWorkersPerCapita: 0.67, lifeExpectancy: 64.58, physicians: 975, nurses: 3900, others: 1706},
+            { country: "Indonesia", healthcareWorkersPerCapita: 6.21, lifeExpectancy: 68.8, physicians: 163115, nurses: 1087432, others: 437691},
+            { country: "East Timor", healthcareWorkersPerCapita: 3.51, lifeExpectancy: 68.5, physicians: 1040, nurses: 2340, others: 1183},
+            { country: "Brunei", healthcareWorkersPerCapita: 9.45, lifeExpectancy: 74.8, physicians: 530, nurses: 2562, others: 1082},
+            { country: "Malaysia", healthcareWorkersPerCapita: 7.56, lifeExpectancy: 75.9, physicians: 73040, nurses: 112880, others: 65072},
+            { country: "Thailand", healthcareWorkersPerCapita: 5.4, lifeExpectancy: 77.19, physicians: 64328, nurses: 221575, others: 100066},
+            { country: "Myanmar", healthcareWorkersPerCapita: 2.57, lifeExpectancy: 67.17, physicians: 42739, nurses: 58766, others: 35527},
+            { country: "Laos", healthcareWorkersPerCapita: 2.03, lifeExpectancy: 68.5, physicians: 2196, nurses: 8783, others: 3843},
+            { country: "Cambodia", healthcareWorkersPerCapita: 1.62, lifeExpectancy: 69.88, physicians: 3279, nurses: 16397, others: 6887},
+            { country: "Vietnam", healthcareWorkersPerCapita: 3.1, lifeExpectancy: 75.47, physicians: 77319, nurses: 144973, others: 77802},
+            { country: "China", healthcareWorkersPerCapita: 7.69, lifeExpectancy: 75.3, physicians: 3389088, nurses: 4659996, others: 2817179},
+            { country: "Philippines", healthcareWorkersPerCapita: 7.56, lifeExpectancy: 71.28, physicians: 89753, nurses: 538517, others: 219895},
+            { country: "Taiwan", healthcareWorkersPerCapita: 13.46, lifeExpectancy: 80.53, physicians: 51693, nurses: 185807, others: 83125},
+            { country: "Bangladesh", healthcareWorkersPerCapita: 1.62, lifeExpectancy: 72.72, physicians: 117195, nurses: 83710, others: 70317},
+            { country: "India", healthcareWorkersPerCapita: 3.24, lifeExpectancy: 70.9, physicians: 977471, nurses: 2373858, others: 1172965},
+        ];
+
+        function createPieChart(data) {
+            const radius = 60;
+            const pie = d3.pie().value(d => d.value);
+            const arc = d3.arc().innerRadius(0).outerRadius(radius);
+        
+            const color = d3.scaleOrdinal().domain(data.map(d => d.key)).range(d3.schemeCategory10);
+            const arcs = pie(data);
+        
+            const total = d3.sum(data, d => d.value);
+        
+            return arcs.map(d => {
+                const percentage = ((d.endAngle - d.startAngle) / (2 * Math.PI)) * 100;
+                return `
+                    <g transform="translate(${radius}, ${radius})">
+                        <path d="${arc(d)}" fill="${color(d.data.key)}"></path>
+                        <text transform="translate(${arc.centroid(d)[0] * 1.5}, ${arc.centroid(d)[1] * 1.5})" text-anchor="middle">${d.data.key}</text>
+                        <text transform="translate(${arc.centroid(d)[0] * 0.5}, ${arc.centroid(d)[1] * 0.5})" text-anchor="middle">${percentage.toFixed(1)}%</text>
+                    </g>
+                `;
+            }).join('');
+        }
+
+        function init() {
+            var w = 1200;
+            var h = 1150;
+
+            var projection = d3.geoMercator()
+                .center([140, -40])
+                .translate([w/2, h / 2])
+                .scale(900);
+
+            var path = d3.geoPath()
+                .projection(projection);
+
+            var svg = d3.select("#chart")
+                .append("svg")
+                .attr("width", w)
+                .attr("height", h)
+                .attr("fill", "grey");
+
+            var tooltip = d3.select("#tooltip");
+
+            const colorScale = d3.scaleLinear()
+                .domain(d3.extent(dataset, d => d.healthcareWorkersPerCapita))
+                .range(["lightblue", "darkblue"]);
+
+            d3.json("oceania.json").then(function(json) {
+                svg.selectAll("path")
+                    .data(json.features)
+                    .enter()
+                    .append("path")
+                    .attr("d", path)
+                    .attr("fill", function(d) {
+                        const countryData = dataset.find(country => country.country === d.properties.admin);
+                        if (countryData) {
+                            return colorScale(countryData.healthcareWorkersPerCapita);
+                        }
+                        return "grey";
+                    })
+                    .on("mouseover", function(event, d) {
+                        let countryData;
+                        if (d.properties.admin === "Australia") {
+                            countryData = dataset.find(country => country.country === "Australia");
+                        } else if (d.properties.admin === "New Zealand") {
+                            countryData = dataset.find(country => country.country === "New Zealand");
+                        } else if (d.properties.admin === "New Caledonia") {
+                            countryData = dataset.find(country => country.country === "New Caledonia");
+                        } else if (d.properties.admin === "Vanuatu") {
+                            countryData = dataset.find(country => country.country === "Vanuatu");
+                        } else if (d.properties.admin === "Fiji") {
+                            countryData = dataset.find(country => country.country === "Fiji");
+                        } else if (d.properties.admin === "Solomon Islands") {
+                            countryData = dataset.find(country => country.country === "Solomon Islands");
+                        } else if (d.properties.admin === "Papua New Guinea") {
+                            countryData = dataset.find(country => country.country === "Papua New Guinea");
+                        } else if (d.properties.admin === "Indonesia") {
+                            countryData = dataset.find(country => country.country === "Indonesia");
+                        } else if (d.properties.admin === "East Timor") {
+                            countryData = dataset.find(country => country.country === "East Timor");
+                        } else if (d.properties.admin === "Brunei") {
+                            countryData = dataset.find(country => country.country === "Brunei");
+                        } else if (d.properties.admin === "Malaysia") {
+                            countryData = dataset.find(country => country.country === "Malaysia");
+                        } else if (d.properties.admin === "Thailand") {
+                            countryData = dataset.find(country => country.country === "Thailand");
+                        } else if (d.properties.admin === "Myanmar") {
+                            countryData = dataset.find(country => country.country === "Myanmar");
+                        } else if (d.properties.admin === "Laos") {
+                            countryData = dataset.find(country => country.country === "Laos");
+                        } else if (d.properties.admin === "Cambodia") {
+                            countryData = dataset.find(country => country.country === "Cambodia");
+                        } else if (d.properties.admin === "Vietnam") {
+                            countryData = dataset.find(country => country.country === "Vietnam");
+                        } else if (d.properties.admin === "China") {
+                            countryData = dataset.find(country => country.country === "China");
+                        } else if (d.properties.admin === "Philippines") {
+                            countryData = dataset.find(country => country.country === "Philippines");
+                        } else if (d.properties.admin === "Taiwan") {
+                            countryData = dataset.find(country => country.country === "Taiwan");
+                        } else if (d.properties.admin === "Bangladesh") {
+                            countryData = dataset.find(country => country.country === "Bangladesh");
+                        } else if (d.properties.admin === "India") {
+                            countryData = dataset.find(country => country.country === "India");
+                        } 
+                        if (countryData) {
+                            tooltip
+                                .html(`
+                                    <strong>${countryData.country}</strong><br>
+                                    Healthcare Workers per 1000: ${countryData.healthcareWorkersPerCapita}<br>
+                                    Life Expectancy: ${countryData.lifeExpectancy} years<br>
+                                    <br>
+                                    <svg width="120" height="120" style="font: 6.5px sans-serif;">
+                                        ${createPieChart([{ key: 'Physicians', value: countryData.physicians }, { key: 'Nurses', value: countryData.nurses }, { key: 'Others', value: countryData.others }])}
+                                    </svg>
+                                `)
+                                .style("visibility", "visible")
+                                .style("left", `${event.pageX + 15}px`)
+                                .style("top", `${event.pageY - 50}px`);
+                        }
+                    })
+                    .on("mouseout", function() {
+                        tooltip.style("visibility", "hidden");
+                    })
+                    .on("click", function(event, d) {
+                        if (d.properties.admin === "Australia") {
+                            window.location.href = "index_australia.html";
+                        }
+                        if (d.properties.admin === "New Zealand") {
+                            window.location.href = "index_new_zealand.html";
+                        }
+                        if (d.properties.admin === "New Caledonia") {
+                            window.location.href = "index_new_caledonia.html";
+                        }
+                        if (d.properties.admin === "Vanuatu") {
+                            window.location.href = "index_vanuatu.html";
+                        }
+                        if (d.properties.admin === "Fiji") {
+                            window.location.href = "index_fiji.html";
+                        }
+                        if (d.properties.admin === "Solomon Islands") {
+                            window.location.href = "index_solomon_islands.html";
+                        }
+                        if (d.properties.admin === "Papua New Guinea") {
+                            window.location.href = "index_papua_new_guinea.html";
+                        }
+                        if (d.properties.admin === "Indonesia") {
+                            window.location.href = "index_indonesia.html";
+                        }
+                        if (d.properties.admin === "East Timor") {
+                            window.location.href = "index_east_timor.html";
+                        }
+                        if (d.properties.admin === "Brunei") {
+                            window.location.href = "index_brunei.html";
+                        }
+                        if (d.properties.admin === "Malaysia") {
+                            window.location.href = "index_malaysia.html";
+                        }
+                        if (d.properties.admin === "Thailand") {
+                            window.location.href = "index_thailand.html";
+                        }
+                        if (d.properties.admin === "Myanmar") {
+                            window.location.href = "index_myanmar.html";
+                        }
+                        if (d.properties.admin === "Laos") {
+                            window.location.href = "index_laos.html";
+                        }
+                        if (d.properties.admin === "Cambodia") {
+                            window.location.href = "index_cambodia.html";
+                        }
+                        if (d.properties.admin === "Vietnam") {
+                            window.location.href = "index_vietnam.html";
+                        }
+                        if (d.properties.admin === "China") {
+                            window.location.href = "index_china.html";
+                        }
+                        if (d.properties.admin === "Philippines") {
+                            window.location.href = "index_philippines.html";
+                        }
+                        if (d.properties.admin === "Taiwan") {
+                            window.location.href = "index_taiwan.html";
+                        }
+                        if (d.properties.admin === "Bangladesh") {
+                            window.location.href = "index_bangladesh.html";
+                        }
+                        if (d.properties.admin === "India") {
+                            window.location.href = "index_india.html";
+                        }
+                    });
+            });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>

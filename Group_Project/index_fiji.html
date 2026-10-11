@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choropleth Map with Interactivity</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://unpkg.com/topojson@3"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #buttons {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        #nursesBtn {
+            padding: 1vw 2vw;
+            background-color: rgb(0, 120, 168);
+            border-radius: 11px;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bolder;
+            font-size: large;
+        }
+        #physiciansBtn {
+            padding: 1vw 2vw;
+            background-color: rgb(0, 120, 168);
+            border-radius: 11px;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bolder;
+            font-size: large;
+        }
+        #othersBtn {
+            padding: 1vw 2vw;
+            background-color: rgb(0, 120, 168);
+            border-radius: 11px;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bolder;
+            font-size: large;
+        }
+        #populationBtn {
+            padding: 1vw 2vw;
+            background-color: rgb(0, 120, 168);
+            border-radius: 11px;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bolder;
+            font-size: large;
+        }
+        .chart-container {
+            margin-top: 10px;
+        }
+        #map, #barchart, #linechart {
+            display: inline-block;
+            vertical-align: top;
+            margin-left: 60px;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            width: auto;
+            height: auto;
+            padding: 5px;
+            font: 12px sans-serif;
+            background: lightsteelblue;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none;
+            visibility: hidden;
+        }
+        #goToMapBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 1vw 2vw;
+            background-color: rgb(104, 104, 104);
+            border-radius: 11px;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bolder;
+            font-size: large;
+        }
+        footer {
+            font-size: large;
+            color: grey;
+            display: flex;
+            justify-content: space-between;
+            padding: 1em;
+        }
+        #footernames {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+        #footerclass {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <button id="goToMapBtn">Go to Map</button>
+    <div id="buttons">
+        <button id="nursesBtn" class="chart-container">Nurses</button>
+        <button id="physiciansBtn" class="chart-container">Physicians</button>
+        <button id="othersBtn" class="chart-container">Others</button>
+        <button id="populationBtn" class="chart-container">Population</button>
+    </div>
+    <br><br><br><br>
+    <div id = "chart-container">
+        <div id="map"></div>
+        <div id="tooltip" class="tooltip"></div>
+        <div id="barchart"></div>
+        <div id="linechart"></div>
+    </div>
+    <br><br><br><br>
+    <footer>
+        <div id = "footerclass">COS30045 Data Visualisation</div>
+        <div id = "footernames">James Newbegin 104563879 | Samuel Nguyen 103806719 | Brandon Swiderski 100984968</div>
+    </footer>
+    <script src="linechart_fiji.js"></script>
+    <script>
+        document.getElementById("goToMapBtn").addEventListener("click", function() {
+            window.location.href = "datavisproject.html";
+        });
+
+        function init() {
+            var w = 950;
+            var h = 900;
+
+            var projection = d3.geoMercator()
+                            .center([0, 0])
+                            .translate([w/2, h/2])
+                            .scale(225);
+
+            var path = d3.geoPath()
+                        .projection(projection);
+
+            var svg = d3.select("#chart")
+                        .append("svg")
+                        .attr("width", w)
+                        .attr("height", h)
+                        .attr("fill", "grey");
+                        
+            d3.json("oceania.json").then(function(world) {
+                svg.selectAll("path")
+                    .data(topojson.feature(world, world.objects.countries).features)
+                    .enter()
+                    .append("path")
+                    .attr("d", path)
+                    .attr("fill", d => {
+                        const countryData = dataset.find(data => data.country === d.properties.name);
+                        return countryData ? color(countryData.healthcareWorkersPerCapita) : "#ccc";
+                    })
+                    .on("mouseover", (event, d) => {
+                        const countryData = dataset.find(data => data.country === d.properties.name);
+                        if (countryData) {
+                            tooltip
+                                .html(`
+                                    <strong>${countryData.country}</strong><br>
+                                    Healthcare Workers per 1000: ${countryData.healthcareWorkersPerCapita}<br>
+                                    Life Expectancy: ${countryData.lifeExpectancy} years<br>
+                                    <br>
+                                    <svg width="120" height="120" style="font: 6.5px sans-serif;">
+                                        ${createPieChart([
+                                            { key: 'Physicians', value: countryData.physicians },
+                                            { key: 'Nurses', value: countryData.nurses },
+                                            { key: 'Others', value: countryData.others },
+                                            { key: 'Population', value: countryData.population }
+                                        ])}
+                                    </svg>
+                                `)
+                                .style("visibility", "visible")
+                                .style("left", `${event.pageX + 15}px`)
+                                .style("top", `${event.pageY - 50}px`);
+                        }
+                    })
+                    .on("mouseout", () => tooltip.style("visibility", "hidden"))
+                    .on("click", (event, d) => {
+                        const countryData = dataset.find(data => data.country === d.properties.name);
+                        if (countryData) {
+                            updateBarChart(countryData);
+                        }
+                    });
+            });
+            
+            updateLineChart('nurses');
+            
+            d3.select("#nursesBtn").on("click", () => updateLineChart('nurses'));
+            d3.select("#physiciansBtn").on("click", () => updateLineChart('physicians'));
+            d3.select("#othersBtn").on("click", () => updateLineChart('others'));
+            d3.select("#populationBtn").on("click", () => updateLineChart('population'));
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
